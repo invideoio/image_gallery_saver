@@ -64,7 +64,6 @@ class ImageGallerySaverPlugin : FlutterPlugin, MethodCallHandler {
                 val name = call.argument<String?>("name")
                 CoroutineScope(Dispatchers.Main).launch {
                     val data = saveFileToGallery(path, name)
-                    Log.d("[SAVE_FILE_TO_GALLERY]", data.toString())
                     result.success(data)
                 }
             }
@@ -194,7 +193,6 @@ class ImageGallerySaverPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     private suspend fun saveFileToGallery(filePath: String?, name: String?): HashMap<String, Any?> {
-        Log.d("[SAVE_FILE_TO_GALLERY]", "$filePath - $name")
         return withContext(Dispatchers.IO){
             if (filePath == null) {
                 return@withContext SaveResultModel(false, null, "parameters error").toHashMap()
