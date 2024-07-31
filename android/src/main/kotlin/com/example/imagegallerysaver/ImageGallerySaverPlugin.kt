@@ -23,7 +23,12 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
 import android.text.TextUtils
+import android.util.Log
 import android.webkit.MimeTypeMap
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.OutputStream
 
 class ImageGallerySaverPlugin : FlutterPlugin, MethodCallHandler {
@@ -57,9 +62,12 @@ class ImageGallerySaverPlugin : FlutterPlugin, MethodCallHandler {
             "saveFileToGallery" -> {
                 val path = call.argument<String?>("file")
                 val name = call.argument<String?>("name")
-                result.success(saveFileToGallery(path, name))
+                CoroutineScope(Dispatchers.Main).launch {
+                    val data = saveFileToGallery(path, name)
+                    Log.d("[SAVE_FILE_TO_GALLERY]", data.toString())
+                    result.success(data)
+                }
             }
-
             else -> result.notImplemented()
         }
     }
@@ -185,51 +193,56 @@ class ImageGallerySaverPlugin : FlutterPlugin, MethodCallHandler {
         }
     }
 
-    private fun saveFileToGallery(filePath: String?, name: String?): HashMap<String, Any?> {
-        // check parameters
-        if (filePath == null) {
-            return SaveResultModel(false, null, "parameters error").toHashMap()
-        }
-        val context = applicationContext ?: return SaveResultModel(
-            false,
-            null,
-            "applicationContext null"
-        ).toHashMap()
-        var fileUri: Uri? = null
-        var outputStream: OutputStream? = null
-        var fileInputStream: FileInputStream? = null
-        var success = false
-
-        try {
-            val originalFile = File(filePath)
-            if(!originalFile.exists()) return SaveResultModel(false, null, "$filePath does not exist").toHashMap()
-            fileUri = generateUri(originalFile.extension, name)
-            if (fileUri != null) {
-                outputStream = context.contentResolver?.openOutputStream(fileUri)
-                if (outputStream != null) {
-                    fileInputStream = FileInputStream(originalFile)
-
-                    val buffer = ByteArray(10240)
-                    var count = 0
-                    while (fileInputStream.read(buffer).also { count = it } > 0) {
-                        outputStream.write(buffer, 0, count)
-                    }
-
-                    outputStream.flush()
-                    success = true
-                }
+    private suspend fun saveFileToGallery(filePath: String?, name: String?): HashMap<String, Any?> {
+        Log.d("[SAVE_FILE_TO_GALLERY]", "$filePath - $name")
+        return withContext(Dispatchers.IO){
+            if (filePath == null) {
+                return@withContext SaveResultModel(false, null, "parameters error").toHashMap()
             }
-        } catch (e: IOException) {
-            SaveResultModel(false, null, e.toString()).toHashMap()
-        } finally {
-            outputStream?.close()
-            fileInputStream?.close()
-        }
-        return if (success) {
-            sendBroadcast(context, fileUri)
-            SaveResultModel(fileUri.toString().isNotEmpty(), fileUri.toString(), null).toHashMap()
-        } else {
-            SaveResultModel(false, null, "saveFileToGallery fail").toHashMap()
+            if (applicationContext == null){
+                return@withContext SaveResultModel(
+                    false,
+                    null,
+                    "applicationContext null"
+                ).toHashMap()
+            }
+            var context = applicationContext!!
+            var fileUri: Uri? = null
+            var outputStream: OutputStream? = null
+            var fileInputStream: FileInputStream? = null
+            var success = false
+
+            try {
+                val originalFile = File(filePath)
+                if(!originalFile.exists())  return@withContext SaveResultModel(false, null, "$filePath does not exist").toHashMap()
+                fileUri = generateUri(originalFile.extension, name)
+                if (fileUri != null) {
+                    outputStream = context.contentResolver?.openOutputStream(fileUri)
+                    if (outputStream != null) {
+                        fileInputStream = FileInputStream(originalFile)
+
+                        val buffer = ByteArray(10240)
+                        var count = 0
+                        while (fileInputStream.read(buffer).also { count = it } > 0) {
+                            outputStream.write(buffer, 0, count)
+                        }
+
+                        outputStream.flush()
+                        success = true
+                    }
+                }
+            } catch (e: IOException) {
+                return@withContext SaveResultModel(false, null, e.toString()).toHashMap()
+            } finally {
+                outputStream?.close()
+                fileInputStream?.close()
+            }
+            if (success) {
+                sendBroadcast(context, fileUri)
+                return@withContext SaveResultModel(fileUri.toString().isNotEmpty(), fileUri.toString(), null).toHashMap()
+            } else {
+                return@withContext SaveResultModel(false, null, "saveFileToGallery fail").toHashMap()
+            }
         }
     }
 }
