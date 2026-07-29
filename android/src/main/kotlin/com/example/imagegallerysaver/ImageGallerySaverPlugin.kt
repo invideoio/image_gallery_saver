@@ -178,9 +178,8 @@ class ImageGallerySaverPlugin : FlutterPlugin, MethodCallHandler {
                 }
             }
         } catch (e: Exception) {
-            // MediaStore insert/openOutputStream can throw beyond IOException
-            // (SecurityException, IllegalArgumentException) — an uncaught one
-            // here crashes the app.
+            // MediaStore insert/openOutputStream can also throw
+            // SecurityException / IllegalArgumentException.
             return SaveResultModel(false, null, e.toString()).toHashMap()
         } finally {
             fos?.close()
@@ -232,9 +231,9 @@ class ImageGallerySaverPlugin : FlutterPlugin, MethodCallHandler {
                     }
                 }
             } catch (e: Exception) {
-                // Catching only IOException let SecurityException /
-                // IllegalArgumentException from the MediaStore escape as an
-                // uncaught coroutine exception → hard process death.
+                // MediaStore insert/openOutputStream can also throw
+                // SecurityException / IllegalArgumentException; anything
+                // uncaught escapes the coroutine and kills the process.
                 return@withContext SaveResultModel(false, null, e.toString()).toHashMap()
             } finally {
                 outputStream?.close()
