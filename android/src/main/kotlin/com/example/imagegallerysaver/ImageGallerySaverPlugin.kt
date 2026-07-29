@@ -177,8 +177,10 @@ class ImageGallerySaverPlugin : FlutterPlugin, MethodCallHandler {
                     success = true
                 }
             }
-        } catch (e: IOException) {
-            SaveResultModel(false, null, e.toString()).toHashMap()
+        } catch (e: Exception) {
+            // MediaStore insert/openOutputStream can also throw
+            // SecurityException / IllegalArgumentException.
+            return SaveResultModel(false, null, e.toString()).toHashMap()
         } finally {
             fos?.close()
             bmp.recycle()
@@ -228,7 +230,10 @@ class ImageGallerySaverPlugin : FlutterPlugin, MethodCallHandler {
                         success = true
                     }
                 }
-            } catch (e: IOException) {
+            } catch (e: Exception) {
+                // MediaStore insert/openOutputStream can also throw
+                // SecurityException / IllegalArgumentException; anything
+                // uncaught escapes the coroutine and kills the process.
                 return@withContext SaveResultModel(false, null, e.toString()).toHashMap()
             } finally {
                 outputStream?.close()
