@@ -1,3 +1,9 @@
+## 2.0.4
+- iOS: rewrite save pipeline on PHAssetCreationRequest (no full-image decode → no jetsam-scale memory spike; original format/metadata/GIF animation preserved; webp/heif/bmp/tiff now ingestible)
+- iOS: per-call FlutterResult + every code path replies exactly once (fixes permanent hang when UIImage(contentsOfFile:) returned nil and double-invoked results on overlapping saves)
+- iOS: real Photos error messages (PHPhotosErrorDomain codes) instead of a generic "check permission" string
+- Android: broaden save catch from IOException to Exception (uncaught SecurityException/IllegalArgumentException from MediaStore crashed the app)
+
 ## 2.0.3
 - 1.Upgrade flutter version to 3.10.5
 - 2.Android build tools are upgraded to 7.3.0
